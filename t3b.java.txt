@@ -1,0 +1,49 @@
+import org.pcap4j.core.*;
+import org.pcap4j.packet.Packet;
+import org.pcap4j.packet.TcpPacket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.regex.Pattern;
+
+public class JavaNIDS {
+    private static final Logger logger = LoggerFactory.getLogger(JavaNIDS.class);
+
+    public static void main(String[] args) {
+        try {
+            PcapNetworkInterface device = Pcaps.findAllDevs().get(0); // Select first available interface
+            int snapLen = 65536; // Capture full packet
+            PcapHandle handle = device.openLive(snapLen, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 50);
+
+            System.out.println("Listening on " + device.getDescription());
+
+            handle.loop(-1, (PacketListener) packet -> {
+                analyzePacket(packet);
+            });
+
+        } catch (Exception e) {
+            logger.error("Error capturing packets", e);
+        }
+    }
+
+    private static void analyzePacket(Packet packet) {
+        if (packet.contains(TcpPacket.class)) {
+            TcpPacket tcpPacket = packet.get(TcpPacket.class);
+            String payload = tcpPacket.getPayload() != null ? tcpPacket.getPayload().toString() : "";
+
+            if (detectSQLInjection(payload) || detectPortScan(tcpPacket)) {
+                logger.warn("Suspicious activity detected: {}", payload);
+            }
+        }
+    }
+
+    private static boolean detectSQLInjection(String payload) {
+        String sqlPattern = "(?i)(SELECT|DROP|UNION|INSERT|DELETE).*";
+        return Pattern.compile(sqlPattern).matcher(payload).find();
+    }
+
+    private static boolean detectPortScan(TcpPacket tcpPacket) {
+        int dstPort = tcpPacket.getHeader().getDstPort().valueAsInt();
+        return dstPort == 22 || dstPort == 3389; // SSH or RDP scan detection
+    }
+}

@@ -1,0 +1,12 @@
+<dependencies>
+    <dependency>
+        <groupId>org.pcap4j</groupId>
+        <artifactId>pcap4j-core</artifactId>
+        <version>1.8.1</version>
+    </dependency>
+    <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>1.2.11</version>
+    </dependency>
+</dependencies>
